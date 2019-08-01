@@ -58,16 +58,36 @@ Resources:
         - email
         - preferred_username
       UserPoolName: !Sub ${AWS::StackName}-UserPool
-  Function:
+  Cognito:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
+        - ResourceName: Cognito
+      StageName: !Ref EnvironmentAPIGatewayStageName
+      DefinitionBody:
+        swagger: '2.0'
+        info: {}
+        paths:
+          /:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SignSomeoneUp.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+  SignSomeoneUp:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub ${AWS::StackName}-Function
+      FunctionName: !Sub ${AWS::StackName}-SignSomeoneUp
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
-        - ResourceName: Function
+        - ResourceName: SignSomeoneUp
       CodeUri: src/Function
-      Handler: index.handler
-      Runtime: nodejs10.x
+      Handler: handler.handler
+      Runtime: python3.7
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
@@ -101,26 +121,6 @@ Resources:
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
           USER_POOL_ID: !Ref UserPool
           USER_POOL_ARN: !GetAtt UserPool.Arn
-  Cognito:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: !Sub
-        - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
-        - ResourceName: Cognito
-      StageName: !Ref EnvironmentAPIGatewayStageName
-      DefinitionBody:
-        swagger: '2.0'
-        info: {}
-        paths:
-          /:
-            get:
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                type: aws_proxy
-                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Function.Arn}/invocations
-              responses: {}
-      EndpointConfiguration: REGIONAL
-      TracingEnabled: true
 Parameters:
   StackeryStackTagName:
     Type: String
